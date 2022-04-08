@@ -6,7 +6,7 @@ import (
 
 	"github.com/allanurbayramgeldiyev209/learngin/helpers"
 	"github.com/joho/godotenv"
-	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -20,15 +20,15 @@ func SetupDbConn() *gorm.DB {
 	db_port := os.Getenv("DB_PORT")
 	db_name := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?charset=utf8mb4&parseTime=True&loc=Local",db_username,db_password,db_host,db_port,db_name)
-  db, errConn := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai", db_host, db_username, db_password, db_name, db_port)
+	db, errConn := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	helpers.CheckErr(errConn)
 
 	return db
-} 
+}
 
-func CloseDbConn( db *gorm.DB) {
-	dbSQL , err := db.DB()
+func CloseDbConn(db *gorm.DB) {
+	dbSQL, err := db.DB()
 	helpers.CheckErr(err)
 
 	errCloseDbConn := dbSQL.Close()

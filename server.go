@@ -1,18 +1,12 @@
 package main
 
 import (
-	controller "github.com/allanurbayramgeldiyev209/learngin/controller"
-	"github.com/gin-gonic/gin"
+	"github.com/allanurbayramgeldiyev209/learngin/helpers"
+	"github.com/allanurbayramgeldiyev209/learngin/routes"
 )
 
-func main(){
-	router := gin.Default()
-	
-	auth_routers := router.Group("/api/auth")
-	{
-		auth_routers.GET("/login", controller.Login)
-		auth_routers.GET("/register", controller.Register)
-	}
-
-	router.Run()
+func main() {
+	api_routes := routes.ApiRoutes()
+	err := api_routes.Run()
+	helpers.CheckErr(err)
 }
