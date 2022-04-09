@@ -20,7 +20,7 @@ func SetupDbConn() *gorm.DB {
 	db_port := os.Getenv("DB_PORT")
 	db_name := os.Getenv("DB_NAME")
 
-	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Shanghai", db_host, db_username, db_password, db_name, db_port)
+	dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%s sslmode=disable TimeZone=Asia/Ashgabat", db_host, db_username, db_password, db_name, db_port)
 	db, errConn := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	helpers.CheckErr(errConn)
 
