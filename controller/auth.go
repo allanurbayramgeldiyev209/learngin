@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/allanurbayramgeldiyev209/learngin/helpers"
@@ -117,4 +118,110 @@ func Register(ctx *gin.Context) {
 		"resp": helpers.BuildResponse(u),
 	})
 
+}
+
+func TokenValid(ctx *gin.Context) error {
+
+	claims := &Claims{}
+
+	token_string := ExtractToken(ctx)
+
+	tkn, err := jwt.ParseWithClaims(token_string, claims, func(token *jwt.Token) (interface{}, error) {
+
+		errEnv := godotenv.Load(".env")
+		helpers.CheckErr(errEnv)
+
+		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
+	})
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			ctx.JSON(http.StatusUnauthorized, gin.H{
+				"resp": helpers.BuildErrResponse(err.Error()),
+			})
+			return err
+		}
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return err
+	}
+
+	if !tkn.Valid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return err
+	}
+	return nil
+
+}
+
+func ExtractToken(ctx *gin.Context) string {
+
+	token := ctx.Query("token")
+	if token != "" {
+		return token
+	}
+
+	bearerToken := ctx.Request.Header.Get("Authorization")
+	if len(strings.Split(bearerToken, " ")) == 2 {
+		return strings.Split(bearerToken, " ")[1]
+	}
+	return bearerToken
+
+}
+
+func ExtractTokenID(ctx *gin.Context) (uint, error) {
+
+	claims := &Claims{}
+
+	token_string := ExtractToken(ctx)
+
+	tkn, err := jwt.ParseWithClaims(token_string, claims, func(token *jwt.Token) (interface{}, error) {
+
+		errEnv := godotenv.Load(".env")
+		helpers.CheckErr(errEnv)
+
+		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
+	})
+
+	if !tkn.Valid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return 0, err
+	}
+
+	uid, err := strconv.ParseUint(claims.UserID, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(uid), nil
+
+}
+
+func CurrentUser(ctx *gin.Context) {
+
+	user_id, err := ExtractTokenID(ctx)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return
+	}
+
+	err, u := models.User{}.GetUserByID(uint(user_id))
+
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"resp": helpers.BuildResponse(u),
+	})
 }

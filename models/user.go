@@ -16,7 +16,6 @@ type User struct {
 func (u User) Add() {
 
 	db := config.SetupDbConn()
-	// config.CloseDbConn(db)
 
 	err := db.Create(&u).Error
 	helpers.CheckErr(err)
@@ -26,7 +25,6 @@ func (u User) Add() {
 func (u User) GetUser(email string) (error, User) {
 
 	db := config.SetupDbConn()
-	// config.CloseDbConn(db)
 
 	err := db.First(&u, "email = ?", email).Error
 	if err != nil {
@@ -42,5 +40,17 @@ func (u User) UpdateToken(email, token string) {
 
 	err := db.Model(&u).Where("email = ?", email).Update("token", token).Error
 	helpers.CheckErr(err)
+
+}
+
+func (u User) GetUserByID(id uint) (error, User) {
+
+	db := config.SetupDbConn()
+
+	err := db.First(&u, "id = ?", id).Error
+	if err != nil {
+		return err, User{}
+	}
+	return nil, u
 
 }
