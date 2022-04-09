@@ -49,6 +49,14 @@ func Register(ctx *gin.Context) {
 		return
 	}
 
+	err := models.User{}.GetUser(input.Email)
+	if err == nil {
+		ctx.JSON(http.StatusNotFound, gin.H{
+			"resp": helpers.BuildErrResponse("Beyle ulanyjy on bar. Ony tazeden gosup bolmayar"),
+		})
+		return
+	}
+
 	u := models.User{}
 
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(u.Password), bcrypt.DefaultCost)

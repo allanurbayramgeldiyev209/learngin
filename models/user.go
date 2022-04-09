@@ -13,13 +13,25 @@ type User struct {
 	Token    string `gorm:"-" json:"token"`
 }
 
-func (u *User) Add() {
+func (u User) Add() {
 
 	db := config.SetupDbConn()
+	// config.CloseDbConn(db)
 
 	err := db.Create(&u).Error
 	helpers.CheckErr(err)
 
-	config.CloseDbConn(db)
+}
+
+func (u User) GetUser(email string) error {
+
+	db := config.SetupDbConn()
+	// config.CloseDbConn(db)
+
+	err := db.First(&u, "email = ?", email).Error
+	if err != nil {
+		return err
+	}
+	return nil
 
 }
