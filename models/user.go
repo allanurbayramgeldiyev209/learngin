@@ -10,7 +10,7 @@ type User struct {
 	Name     string `gorm:"type:varchar(255)" json:"name"`
 	Email    string `gorm:"index;type:varchar(255)" json:"email"`
 	Password string `gorm:"->;<-;not null" json:"-"`
-	Token    string `gorm:"-" json:"token"`
+	Token    string `gorm:"text" json:"token"`
 }
 
 func (u User) Add() {
@@ -23,15 +23,24 @@ func (u User) Add() {
 
 }
 
-func (u User) GetUser(email string) error {
+func (u User) GetUser(email string) (error, User) {
 
 	db := config.SetupDbConn()
 	// config.CloseDbConn(db)
 
 	err := db.First(&u, "email = ?", email).Error
 	if err != nil {
-		return err
+		return err, User{}
 	}
-	return nil
+	return nil, u
+
+}
+
+func (u User) UpdateToken(email, token string) {
+
+	db := config.SetupDbConn()
+
+	err := db.Model(&u).Where("email = ?", email).Update("token", token).Error
+	helpers.CheckErr(err)
 
 }

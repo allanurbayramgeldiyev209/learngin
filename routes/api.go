@@ -12,8 +12,8 @@ func ApiRoutes() *gin.Engine {
 
 	auth_routers := router.Group("/api/auth")
 	{
-		auth_routers.GET("/login", controller.Login)
-		auth_routers.GET("/register", controller.Register)
+		auth_routers.POST("/login", controller.Login)
+		auth_routers.POST("/register", controller.Register)
 	}
 
 	return router
