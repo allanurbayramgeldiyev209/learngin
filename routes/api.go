@@ -15,7 +15,9 @@ func ApiRoutes() *gin.Engine {
 	{
 		auth_routers.POST("/login", controller.Login)
 		auth_routers.POST("/register", controller.Register)
+		auth_routers.GET("/refresh", controller.RefreshToken)
 	}
+
 	routers := router.Group("/api")
 	{
 		routers.Use(middleware.JwtAuthMiddleware())

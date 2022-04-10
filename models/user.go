@@ -6,11 +6,12 @@ import (
 )
 
 type User struct {
-	ID       uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
-	Name     string `gorm:"type:varchar(255)" json:"name"`
-	Email    string `gorm:"index;type:varchar(255)" json:"email"`
-	Password string `gorm:"->;<-;not null" json:"-"`
-	Token    string `gorm:"text" json:"token"`
+	ID            uint64 `gorm:"primaryKey;autoIncrement" json:"id"`
+	Name          string `gorm:"type:varchar(255)" json:"name"`
+	Email         string `gorm:"index;type:varchar(255)" json:"email"`
+	Password      string `gorm:"->;<-;not null" json:"-"`
+	AccessToken   string `gorm:"text" json:"access_token"`
+	ResfreshToken string `gorm:"text" json:"refresh_token"`
 }
 
 func (u User) Add() {
@@ -34,11 +35,20 @@ func (u User) GetUser(email string) (error, User) {
 
 }
 
-func (u User) UpdateToken(email, token string) {
+func (u User) UpdateToken(email, access_token, refresh_token string) {
 
 	db := config.SetupDbConn()
 
-	err := db.Model(&u).Where("email = ?", email).Update("token", token).Error
+	err := db.Model(u).Where("email = ?", email).Updates(User{AccessToken: access_token, ResfreshToken: refresh_token}).Error
+	helpers.CheckErr(err)
+
+}
+
+func (u User) UpdateTokenByID(id uint, access_token, refresh_token string) {
+
+	db := config.SetupDbConn()
+
+	err := db.Model(u).Where("id = ?", id).Updates(User{AccessToken: access_token, ResfreshToken: refresh_token}).Error
 	helpers.CheckErr(err)
 
 }

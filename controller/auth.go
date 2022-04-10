@@ -55,31 +55,47 @@ func Login(ctx *gin.Context) {
 		return
 	}
 
-	claims := &Claims{
+	claims_for_access := &Claims{
 		UserID: strconv.FormatUint(user.ID, 10),
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
 		},
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	claims_for_refresh := &Claims{
+		UserID: strconv.FormatUint(user.ID, 10),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(60 * time.Minute).Unix(),
+		},
+	}
+
+	access_token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims_for_access)
+	refresh_token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims_for_refresh)
 
 	errEnv := godotenv.Load(".env")
 	helpers.CheckErr(errEnv)
 
-	tokenString, errCreateToken := token.SignedString([]byte(os.Getenv("JWT_SECRET_KEY")))
+	access_tokenString, errCreateAccessToken := access_token.SignedString([]byte(os.Getenv("SECRET_KEY_ACCESS_TOKEN")))
+	refresh_tokenString, errCreateRefreshToken := refresh_token.SignedString([]byte(os.Getenv("SECRET_KEY_REFRESH_TOKEN")))
 
-	if errCreateToken != nil {
+	if errCreateAccessToken != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{
-			"resp": helpers.BuildErrResponse(errCreateToken.Error()),
+			"resp": helpers.BuildErrResponse(errCreateAccessToken.Error()),
 		})
 		return
 	}
 
-	models.User{}.UpdateToken(user.Email, tokenString)
+	if errCreateRefreshToken != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"resp": helpers.BuildErrResponse(errCreateRefreshToken.Error()),
+		})
+		return
+	}
+
+	models.User{}.UpdateToken(user.Email, access_tokenString, refresh_tokenString)
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"resp": helpers.BuildResponse(tokenString),
+		"resp": helpers.BuildResponse(map[string]string{"access_toke": access_tokenString, "refresh_token": refresh_tokenString}),
 	})
 
 }
@@ -131,7 +147,7 @@ func TokenValid(ctx *gin.Context) error {
 		errEnv := godotenv.Load(".env")
 		helpers.CheckErr(errEnv)
 
-		return []byte(os.Getenv("JWT_SECRET_KEY")), nil
+		return []byte(os.Getenv("SECRET_KEY_ACCESS_TOKEN")), nil
 	})
 
 	if err != nil {
@@ -141,7 +157,7 @@ func TokenValid(ctx *gin.Context) error {
 			})
 			return err
 		}
-		ctx.JSON(http.StatusBadRequest, gin.H{
+		ctx.JSON(http.StatusForbidden, gin.H{
 			"resp": helpers.BuildErrResponse(err.Error()),
 		})
 		return err
@@ -201,6 +217,35 @@ func ExtractTokenID(ctx *gin.Context) (uint, error) {
 
 }
 
+func ExtrTokenID(ctx *gin.Context) (uint, error) {
+
+	claims := &Claims{}
+
+	token_string := ExtractToken(ctx)
+
+	tkn, err := jwt.ParseWithClaims(token_string, claims, func(token *jwt.Token) (interface{}, error) {
+
+		errEnv := godotenv.Load(".env")
+		helpers.CheckErr(errEnv)
+
+		return []byte(os.Getenv("SECRET_KEY_REFRESH_TOKEN")), nil
+	})
+
+	if !tkn.Valid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return 0, err
+	}
+
+	uid, err := strconv.ParseUint(claims.UserID, 10, 32)
+	if err != nil {
+		return 0, err
+	}
+	return uint(uid), nil
+
+}
+
 func CurrentUser(ctx *gin.Context) {
 
 	user_id, err := ExtractTokenID(ctx)
@@ -224,4 +269,93 @@ func CurrentUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{
 		"resp": helpers.BuildResponse(u),
 	})
+
+}
+
+func RefreshToken(ctx *gin.Context) {
+
+	user_id, err := ExtrTokenID(ctx)
+
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return
+	}
+
+	claims := &Claims{}
+
+	token_string := ExtractToken(ctx)
+
+	tkn, err := jwt.ParseWithClaims(token_string, claims, func(token *jwt.Token) (interface{}, error) {
+
+		errEnv := godotenv.Load(".env")
+		helpers.CheckErr(errEnv)
+
+		return []byte(os.Getenv("SECRET_KEY_REFRESH_TOKEN")), nil
+	})
+
+	if err != nil {
+		if err == jwt.ErrSignatureInvalid {
+			ctx.JSON(http.StatusUnauthorized, gin.H{
+				"resp": helpers.BuildErrResponse(err.Error()),
+			})
+			return
+		}
+		ctx.JSON(http.StatusForbidden, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return
+	}
+
+	if !tkn.Valid {
+		ctx.JSON(http.StatusUnauthorized, gin.H{
+			"resp": helpers.BuildErrResponse(err.Error()),
+		})
+		return
+	}
+
+	claims_for_access := &Claims{
+		UserID: strconv.FormatUint(uint64(user_id), 10),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(5 * time.Minute).Unix(),
+		},
+	}
+
+	claims_for_refresh := &Claims{
+		UserID: strconv.FormatUint(uint64(user_id), 10),
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(60 * time.Minute).Unix(),
+		},
+	}
+
+	access_token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims_for_access)
+	refresh_token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims_for_refresh)
+
+	errEnv := godotenv.Load(".env")
+	helpers.CheckErr(errEnv)
+
+	access_tokenString, errCreateAccessToken := access_token.SignedString([]byte(os.Getenv("SECRET_KEY_ACCESS_TOKEN")))
+	refresh_tokenString, errCreateRefreshToken := refresh_token.SignedString([]byte(os.Getenv("SECRET_KEY_REFRESH_TOKEN")))
+
+	if errCreateAccessToken != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"resp": helpers.BuildErrResponse(errCreateAccessToken.Error()),
+		})
+		return
+	}
+
+	if errCreateRefreshToken != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{
+			"resp": helpers.BuildErrResponse(errCreateRefreshToken.Error()),
+		})
+		return
+	}
+
+	models.User{}.UpdateTokenByID(user_id, access_tokenString, refresh_tokenString)
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"resp": helpers.BuildResponse(map[string]string{"access_toke": access_tokenString, "refresh_token": refresh_tokenString}),
+	})
+
 }
