@@ -22,6 +22,11 @@ func ApiRoutes() *gin.Engine {
 	{
 		routers.Use(middleware.JwtAuthMiddleware())
 		routers.GET("/user", controller.CurrentUser)
+		routers.POST("/book/add", controller.AddBook)
+		routers.GET("/books", controller.GetBooks)
+		routers.GET("/book/:id", controller.GetBook)
+		routers.POST("/book/:id/update", controller.UpdateBook)
+		routers.GET("/book/:id/delete", controller.DeleteBook)
 	}
 
 	return router
